@@ -6,6 +6,9 @@ public class PlayerController : MonoBehaviour
 {
     [Header("Horizontal Movement Settings:")]
     [SerializeField] private float walkSpeed = 1;
+    [SerializeField] private float acceleration = 0.08f;
+    [SerializeField] private float deceleration = 0.06f;
+    private float velocityXSmoothing;
     [Space(5)]
 
 
@@ -103,7 +106,11 @@ public class PlayerController : MonoBehaviour
 
     private void Move()
     {
-        rb.velocity = new Vector2(walkSpeed * xAxis, rb.velocity.y);
+        float targetSpeed = xAxis * walkSpeed;
+        float smoothTime = Mathf.Abs(xAxis) > 0.01f ? acceleration : deceleration;
+        float newXVelocity = Mathf.SmoothDamp(rb.velocity.x, targetSpeed, ref velocityXSmoothing, smoothTime);
+
+        rb.velocity = new Vector2(newXVelocity, rb.velocity.y);
         anim.SetBool("Walking", rb.velocity.x != 0 && Grounded());
     }
 
