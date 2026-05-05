@@ -23,6 +23,13 @@ public class PlayerController : MonoBehaviour
     [Space(5)]
 
 
+    [Header("Climb Settings")]
+    [SerializeField] private float climbSpeed = 3f;
+    private bool isOnLadder;
+    private float yAxis;
+    [Space(5)]
+
+
     [Header("Ground Check Settings:")]
     [SerializeField] private Transform groundCheckPoint;
     [SerializeField] private float groundCheckY = 0.2f;
@@ -83,6 +90,7 @@ public class PlayerController : MonoBehaviour
         if (pState.dashing) return;
         Flip();
         Move();
+        HandleClimb();
         Jump();
         StartDash();
     }
@@ -90,6 +98,7 @@ public class PlayerController : MonoBehaviour
     void GetInputs()
     {
         xAxis = Input.GetAxisRaw("Horizontal");
+        yAxis = Input.GetAxisRaw("Vertical");
     }
 
     void Flip()
@@ -116,6 +125,8 @@ public class PlayerController : MonoBehaviour
 
     void StartDash()
     {
+        if (isOnLadder) return;
+
         if(Input.GetButtonDown("Dash") && canDash && !dashed)
         {
             StartCoroutine(Dash());
@@ -159,6 +170,11 @@ public class PlayerController : MonoBehaviour
 
     void Jump()
     {
+        if (isOnLadder)
+        {
+            pState.jumping = false;
+            return;
+        }
 
         if (!pState.jumping)
         {
@@ -190,6 +206,14 @@ public class PlayerController : MonoBehaviour
 
     void UpdateJumpVariables()
     {
+        if (isOnLadder)
+        {
+            pState.jumping = false;
+            coyoteTimeCounter = 0;
+            jumpBufferCounter = 0;
+            return;
+        }
+
         if (Grounded())
         {
             pState.jumping = false;
@@ -208,6 +232,36 @@ public class PlayerController : MonoBehaviour
         else
         {
             jumpBufferCounter--;
+        }
+    }
+
+    void HandleClimb()
+    {
+        if (isOnLadder)
+        {
+            rb.gravityScale = 0;
+            rb.velocity = new Vector2(rb.velocity.x, yAxis * climbSpeed);
+            return;
+        }
+
+        rb.gravityScale = gravity;
+    }
+
+    void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.gameObject.layer == LayerMask.NameToLayer("Ladder"))
+        {
+            isOnLadder = true;
+            dashed = false;
+        }
+    }
+
+    void OnTriggerExit2D(Collider2D collision)
+    {
+        if (collision.gameObject.layer == LayerMask.NameToLayer("Ladder"))
+        {
+            isOnLadder = false;
+            rb.gravityScale = gravity;
         }
     }
 }
