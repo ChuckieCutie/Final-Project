@@ -30,6 +30,15 @@ public class PlayerController : MonoBehaviour
     [Space(5)]
 
 
+    [Header("Interact Settings")]
+    [SerializeField] private Transform interactCheckPoint;
+    [SerializeField] private float interactRadius = 1f;
+    [SerializeField] private LayerMask interactableLayer;
+    [SerializeField] private GameObject interactPrompt;
+    private IInteractable currentInteractable;
+    [Space(5)]
+
+
     [Header("Ground Check Settings:")]
     [SerializeField] private Transform groundCheckPoint;
     [SerializeField] private float groundCheckY = 0.2f;
@@ -86,6 +95,7 @@ public class PlayerController : MonoBehaviour
     {
         GetInputs();
         UpdateJumpVariables();
+        UpdateInteraction();
 
         if (pState.dashing) return;
         Flip();
@@ -99,6 +109,70 @@ public class PlayerController : MonoBehaviour
     {
         xAxis = Input.GetAxisRaw("Horizontal");
         yAxis = Input.GetAxisRaw("Vertical");
+    }
+
+    void UpdateInteraction()
+    {
+        if (interactCheckPoint == null)
+        {
+            interactCheckPoint = transform;
+        }
+
+        Collider2D[] hits = Physics2D.OverlapCircleAll(interactCheckPoint.position, interactRadius, interactableLayer);
+        IInteractable nearestInteractable = null;
+        float nearestDistance = float.MaxValue;
+
+        for (int i = 0; i < hits.Length; i++)
+        {
+            IInteractable interactable = GetInteractableFromCollider(hits[i]);
+
+            if (interactable == null)
+            {
+                continue;
+            }
+
+            float distance = Vector2.Distance(interactCheckPoint.position, hits[i].transform.position);
+            if (distance < nearestDistance)
+            {
+                nearestDistance = distance;
+                nearestInteractable = interactable;
+            }
+        }
+
+        currentInteractable = nearestInteractable;
+
+        if (interactPrompt != null)
+        {
+            interactPrompt.SetActive(currentInteractable != null);
+        }
+
+        if (currentInteractable != null && Input.GetKeyDown(KeyCode.E))
+        {
+            currentInteractable.Interact();
+        }
+    }
+
+    IInteractable GetInteractableFromCollider(Collider2D collider2D)
+    {
+        MonoBehaviour[] selfComponents = collider2D.GetComponents<MonoBehaviour>();
+        for (int i = 0; i < selfComponents.Length; i++)
+        {
+            if (selfComponents[i] is IInteractable interactable)
+            {
+                return interactable;
+            }
+        }
+
+        MonoBehaviour[] parentComponents = collider2D.GetComponentsInParent<MonoBehaviour>();
+        for (int i = 0; i < parentComponents.Length; i++)
+        {
+            if (parentComponents[i] is IInteractable interactable)
+            {
+                return interactable;
+            }
+        }
+
+        return null;
     }
 
     void Flip()
